@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Digiboxx</title>
+    <style>
+      body {
+        /* min-width: 200px;
+        min-height: 200px; */
+        padding: 10px;
+        font-family: sans-serif;
+         /* background-image: url('./logo.jpg'); */
+       
+        height: 300px ;
+        width: 300px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        box-sizing: border-box;
+      }
+      input[type="submit"] {
+        display: block;
+        margin-top: 10px;
+        padding: 5px 10px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      /* input[type="button"] {
+        display: block;
+        margin-top: 10px;
+        padding: 5px 10px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+      } */
+      input[type="submit"]:hover {
+        background-color: #0069d9;
+      }
+      .error {
+        color: red;
+        font-size: 12px;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <img src="./logo.jpg" style="height: 200px; width: 300px;">
+    <div id="form">
+    <h1 style="font-size: 1.8em; color: blue; padding: 6px; display: flex; justify-content: center;">Login to DigiBoxx</h1>
+    <form id="login-form" >
+      <label for="email">Email:</label>
+      <input type="text" id="email" name="email" required>
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required>
+      <input type="submit" value="Login"><br><br>
+    </form>
+    <div id="error-message" class="error"></div>
+    </div>
+
+    <div id = "details">
+      <p id="loggedIn">You are logged in as</p>
+      <input type="button" value="Logout" id="logout" style=" background-color: #007bff;color: #fff; border: none;border-radius: 3px;  cursor: pointer; display: block; margin-top: 10px; padding: 5px 10px;"><br><br>
+      <!-- <input type="button" value="Open MyBoxx" id="redirect" ><br><br> -->
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
