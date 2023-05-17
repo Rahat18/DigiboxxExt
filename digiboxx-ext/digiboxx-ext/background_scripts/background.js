@@ -359,14 +359,14 @@ console.log(file)
          console.log(data)
          return data.json()
         }).then(data =>{
-          if(data.message == "Token Expired"){
-            localStorage.removeItem("token");
-            localStorage.removeItem("email");
+          if(data.message == "Token Expired") {
+            // localStorage.removeItem("token");
+            // localStorage.removeItem("email");
             chrome.storage.local.remove("token");
             chrome.storage.local.remove("email");
           }
         }).catch(error =>{
-         console.log(error)
+         console.log(error);
         })
       })
   

@@ -2,17 +2,17 @@
 
 // //To display username on the popup when the user successfully login
 function DisplayUsername(){
-  console.log(localStorage.getItem('token'))
-  if(localStorage.getItem('token')){
-    document.getElementById('form').style.display = "none"
-    document.getElementById('details').style.display = "block"
-    document.getElementById('loggedIn').innerText =  "You are logged in as" + " " +localStorage.getItem('email')
-  } else{
-    document.getElementById('form').style.display = "block"
-    document.getElementById('details').style.display = "none"
-  }
+  chrome.storage.local.get("token", function (result) {
+    if (result.token) {
+      document.getElementById('form').style.display = "none"
+      document.getElementById('details').style.display = "block"
+      document.getElementById('loggedIn').innerText =  "You are logged in as" + " " +localStorage.getItem('email')  
+    } else {
+      document.getElementById('form').style.display = "block"
+      document.getElementById('details').style.display = "none"
+    }
+  });
 }
-DisplayUsername()
 // document.addEventListener('DOMContentLoaded', function () {
 //   var loginForm = document.getElementById('login-form');
 //   var errorMessage = document.getElementById('error-message');
@@ -243,6 +243,14 @@ function login(email, password, otp) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  DisplayUsername();
+
+  chrome.storage.onChanged.addListener(() => {
+    DisplayUsername();
+  });
+
+  // chrome.storage.local.remove("token");
+
   const otpContainer = document.getElementById('otpContainer');
   const otpField = document.getElementById("otp");
 
