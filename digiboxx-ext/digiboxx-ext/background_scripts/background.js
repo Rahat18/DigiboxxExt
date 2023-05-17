@@ -6,6 +6,7 @@ function getToken() {
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {
+        console.log(result.token)
         resolve(result.token);
       }
     });
@@ -18,7 +19,7 @@ function getFolderSession() {
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {
-        resolve(result.folder_created);
+        resolve(result.folder_created || result);
       }
     });
   });
@@ -339,4 +340,37 @@ console.log(file)
     });;
   })
   }
+
+  function ActiveSession(){
    
+  
+    setInterval(()=>{
+      getToken().then(token => {
+        fetch('https://apitest.digiboxx.com/heartbeat/' ,{
+          method: "POST",
+        headers:{
+         "accept": "application/json",
+               "Authorization": `Bearer ${token}`,
+               "x-request-referrer": "https://apitest.digiboxx.com/"
+        },
+        body:JSON.stringify({})
+     
+        }).then(data =>{
+         console.log(data)
+         return data.json()
+        }).then(data =>{
+          if(data.message == "Token Expired"){
+            localStorage.removeItem("token");
+            localStorage.removeItem("email");
+            chrome.storage.local.remove("token");
+            chrome.storage.local.remove("email");
+          }
+        }).catch(error =>{
+         console.log(error)
+        })
+      })
+  
+    } , 5000)
+  }
+   
+   ActiveSession()
