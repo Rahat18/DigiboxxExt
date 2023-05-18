@@ -1,6 +1,6 @@
 {
   "name": "DigiBoxx",
-  "description": "DigiBoxx Chrome Extension let's user to upload image from anywhere on the web directly to digiboxx account",
+  "description": "DigiBoxx Chrome Extension let's user to upload files from anywhere on the web directly to digiboxx account",
   "version": "1.0.1",
   "manifest_version": 3,
   "icons": {

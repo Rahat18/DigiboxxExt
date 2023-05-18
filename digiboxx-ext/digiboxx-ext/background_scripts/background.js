@@ -24,7 +24,7 @@ function getFolderSession() {
     });
   });
 }
-//
+//func  to get the upload URL
 async function getUploadUrl(token, imageName, newImageName, imageSize, imageExtension) {
   const folder_session = await getFolderSession()
     return new Promise((resolve, reject) => {
@@ -64,6 +64,7 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
     });
   }
 
+  // func for put method post minio to upload file to api
   function uploadImage(uploadUrl, file) {
     console.log(file)
     return new Promise((resolve, reject) => {
@@ -79,6 +80,7 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
         .catch(error => reject(error));
     });
   }
+
   //mime type
   const imageType = {
     'image/jpeg': '.jpeg',
@@ -98,7 +100,7 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
   }
   defaultType = 'image/jpeg'
 
-// Function to download an image from a URL and return a File object
+// Function to save an image from a URL and return a File object
 function downloadImageOnly(url  ) {
   // console.log(url )
     return new Promise((resolve, reject) => {
@@ -194,8 +196,8 @@ console.log(file)
                 }).catch(err => {
                   chrome.notifications.create({
                     type: "basic",
-                    title: "Error uploading image",
-                    message: `An error occurred while uploading thumbnail 2: ${err}`,
+                    title: "Error saving file",
+                    message: `An error occurred while uploading thumbnail.`,
                     iconUrl: "icon.png"
                   });
                 })
@@ -203,7 +205,7 @@ console.log(file)
                 chrome.notifications.create({
                   type: "basic",
                   title: "Error saving file",
-                  message: `An error occurred while uploading thumbnail: ${err}`,
+                  message: `An error occurred while uploading thumbnail.`,
                   iconUrl: "icon.png"
                 });
               })
@@ -227,8 +229,8 @@ console.log(file)
       }).catch(error => {
         chrome.notifications.create({
           type: "basic",
-          title: "Error fetching image",
-          message: `An error occurred while fetching the image.`,
+          title: "Error fetching file",
+          message: `An error occurred while fetching the file.`,
           iconUrl: "icon.png"
         });
       });
@@ -340,7 +342,7 @@ console.log(file)
     });;
   })
   }
-
+//  funct to logout the user from the extension if any other active session is found
   function ActiveSession(){
    
   
@@ -356,7 +358,7 @@ console.log(file)
         body:JSON.stringify({})
      
         }).then(data =>{
-         console.log(data)
+        //  console.log(data)
          return data.json()
         }).then(data =>{
           if(data.message == "Token Expired") {
