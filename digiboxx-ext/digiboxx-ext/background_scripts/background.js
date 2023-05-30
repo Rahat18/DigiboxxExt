@@ -178,7 +178,7 @@ console.log(file)
                   // });
                 
                   UpdateThumbnail(token , newImageName  , uploadRes).then((data)=>{
-                  
+                   
                     chrome.notifications.create({
                       type: "basic",
                       title: "File saved",
@@ -186,6 +186,7 @@ console.log(file)
                       iconUrl: "icon.png"
                     });
                   }).catch(err => {
+                  
                     chrome.notifications.create({
                       type: "basic",
                       title: "Error updating thumbnail",
@@ -219,20 +220,31 @@ console.log(file)
             });
           });
         }).catch(error => {
-          chrome.notifications.create({
-            type: "basic",
-            title: "Error getting upload URL",
-            message: `An error occurred while getting the upload URL`,
-            iconUrl: "icon.png"
-          });
+          if(error.status_code){
+            chrome.notifications.create({
+              type: "basic",
+              title: "Error getting upload URL",
+              message: `An error occurred while getting the upload URL`,
+              iconUrl: "icon.png"
+            });
+          }else {
+           networkFails()
+          }
+          
         });
       }).catch(error => {
-        chrome.notifications.create({
-          type: "basic",
-          title: "Error fetching file",
-          message: `An error occurred while fetching the file.`,
-          iconUrl: "icon.png"
-        });
+        if(error.status_code){
+          chrome.notifications.create({
+            type: "basic",
+            title: "Error fetching file",
+            message: `An error occurred while fetching the file.`,
+            iconUrl: "icon.png"
+          });
+        }
+        else {
+          networkFails()
+         }
+        
       });
     });
   }
@@ -358,7 +370,7 @@ console.log(file)
         body:JSON.stringify({})
      
         }).then(data =>{
-        //  console.log(data)
+          console.log(data)
          return data.json()
         }).then(data =>{
           if(data.message == "Token Expired") {
@@ -368,7 +380,7 @@ console.log(file)
             chrome.storage.local.remove("email");
           }
         }).catch(error =>{
-         console.log(error);
+         console.log(error.message);
         })
       })
   
@@ -376,3 +388,13 @@ console.log(file)
   }
    
    ActiveSession()
+
+   function networkFails(){
+    chrome.notifications.create({
+      type: "basic",
+      title: "DigiBoxx unreachable",
+      message: "We could not reach DigiBoxx. The network could be down or busy. Please try again in a minute.",
+      iconUrl: "icon.png"
+    });
+
+   }
