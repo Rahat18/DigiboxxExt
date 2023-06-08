@@ -83,6 +83,7 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
 
   //mime type
   const imageType = {
+    '': '.jpeg',
     'image/jpeg': '.jpeg',
     'image/jpg': '.jpg',
     'image/png': '.png',
@@ -96,22 +97,28 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
      'application/vnd.ms-powerpoint' : '.ppt' ,
      'text/plain' : '.txt' ,
      'application/rtf' : '.rtf',
-     'text/html': '.html'
+     'text/html': '.html' ,
+     'video/mp4': '.mp4'
   }
   defaultType = 'image/jpeg'
 
 // Function to save an image from a URL and return a File object
-function downloadImageOnly(url  ) {
+function downloadImageOnly(url) {
   // console.log(url )
     return new Promise((resolve, reject) => {
       fetch(url).then(response => {
         response.blob().then(blob => {
           // Extract the filename from the URL
-          const name = url.replaceAll('.').split('/')
-          const file =  new File([blob], name[(name.length) - 1] + imageType[blob.type], {
+          // const name = url.replaceAll('.').split('/')
+          const temp = url.split('/');
+          const name = temp[temp.length - 1];
+          // const file =  new File([blob], name[(name.length) - 1] + imageType[blob.type], {
+          //   type: blob.type || defaultType,
+          // });
+          const file =  new File([blob], name.includes(".") ? name : name + imageType[blob.type], {
             type: blob.type || defaultType,
           });
-           console.log(file)
+          //  console.log(file)
            resolve(file);
         });
       }).catch(error => {
@@ -144,7 +151,7 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
         // Extracting infos from the blob
         const fileType = file.type.split("/")[1];
         const size = file.size;
-        const imageName = file.name
+        const imageName = file.name;
 
         // Generate a random number for the image name
         const randomNumber = Math.floor(Math.random() * 1000000);
@@ -255,7 +262,7 @@ console.log(file)
     const folder_session = await getFolderSession()
   
     const fileUploadData = new FormData();
-    const extension = [fileType]
+    const extension = [fileType, "ChromeExt"]
     fileUploadData.append("tag_details1", JSON.stringify(extension));
     fileUploadData.append("user_details", "{}");
     fileUploadData.append("file_title1", imageName);
