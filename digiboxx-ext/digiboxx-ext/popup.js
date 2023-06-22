@@ -147,7 +147,7 @@ console.log(data)
           })
           
         });
-        // console.log(data)
+        console.log(data);
 
       }
       // if user has TFA activated, then otp will be sent to user
@@ -174,7 +174,11 @@ console.log(data)
             }
           })
         });
-      } else {
+      }  else if ((data.message === "Invalid Password" && data.status_code== 403) || data.status_code == 402) {
+        wrongPassword.style.display = 'block';
+        wrongPassword.innerText = data.message_format;
+      }
+      else {
         console.log(data);
       }
     } catch(error) {

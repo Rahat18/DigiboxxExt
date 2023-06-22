@@ -6,7 +6,7 @@ function getToken() {
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {
-        console.log(result.token)
+        // console.log(result.token)
         resolve(result.token);
       }
     });
@@ -56,7 +56,7 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
         }
         return response.json();
       }).then(data => {
-        console.log(data)
+         console.log(data)
         resolve(data);
       }).catch(error => {
         reject(error);
@@ -66,12 +66,12 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
 
   // func for put method post minio to upload file to api
   function uploadImage(uploadUrl, file) {
-    console.log(file)
+     console.log(file)
     return new Promise((resolve, reject) => {
       fetch(uploadUrl, {method: 'PUT', body: file})
         .then(response => {
           if (response.ok) {
-            console.log(response)
+            // console.log(response)
             resolve(response.text());
           } else {
             reject(response.statusText);
@@ -104,7 +104,7 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
 
 // Function to save an image from a URL and return a File object
 function downloadImageOnly(url) {
-  // console.log(url )
+   console.log(url )
     return new Promise((resolve, reject) => {
       fetch(url).then(response => {
         response.blob().then(blob => {
@@ -132,7 +132,7 @@ chrome.runtime.onInstalled.addListener(function () {
   // Add context menu to save images
   chrome.contextMenus.create({
     title: "Save to Digiboxx",
-    contexts: ["image" , "link"],     
+    contexts: ["image" , "link" , "video" , "selection"],     
     id: "saveImage",
   });
 });
@@ -140,14 +140,14 @@ chrome.runtime.onInstalled.addListener(function () {
 // Add a listener to handle the context menu item click
 
 chrome.contextMenus.onClicked.addListener(function (info, tab) {
-  console.log(info)
+  // console.log(info)
   if (info.menuItemId === "saveImage") {
     // Get the token from local storage
     getToken().then(token => {
      
       // Download the image from the URL
       downloadImageOnly(info.srcUrl || info.linkUrl).then(file => {
-      console.log(file)
+      // console.log(file)
         // Extracting infos from the blob
         const fileType = file.type.split("/")[1];
         const size = file.size;
@@ -159,10 +159,10 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
 
         // Get the upload URL from the API
         getUploadUrl(token, imageName, newImageName, size, fileType).then(uploadRes => {
-        console.log(uploadRes)
+        // console.log(uploadRes)
           // Upload the image to the API
           uploadImage(uploadRes.url, file).then(() => {
-console.log(file)
+// console.log(file)
             // Validate the file
             validateUploadedFile(file, uploadRes, token, fileType, size, imageName, newImageName).then(() => {
               // chrome.notifications.create({
@@ -377,7 +377,7 @@ console.log(file)
         body:JSON.stringify({})
      
         }).then(data =>{
-          console.log(data)
+          // console.log(data)
          return data.json()
         }).then(data =>{
           if(data.message == "Token Expired") {
@@ -387,7 +387,7 @@ console.log(file)
             chrome.storage.local.remove("email");
           }
         }).catch(error =>{
-         console.log(error.message);
+        //  console.log(error.message);
         })
       })
   
