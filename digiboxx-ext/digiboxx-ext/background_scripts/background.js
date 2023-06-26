@@ -98,7 +98,14 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
      'text/plain' : '.txt' ,
      'application/rtf' : '.rtf',
      'text/html': '.html' ,
-     'video/mp4': '.mp4'
+     'video/mp4': '.mp4',
+     'video/mpeg': '.mpeg',
+     'video/mpg': '.mpeg',
+     'video/x-msvideo': '.avi',
+     'video/quicktime': '.quicktime',
+     'video/webm': '.webm',
+     'video/ogg': '.ogg'
+
   }
   defaultType = 'image/jpeg'
 
