@@ -100,11 +100,34 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
      'text/html': '.html' ,
      'video/mp4': '.mp4'
   }
-  defaultType = 'image/jpeg'
+  // defaultType = 'image/jpeg'
 
 // Function to save an image from a URL and return a File object
+// function downloadImageOnly(url) {
+//   // console.log(url )
+//     return new Promise((resolve, reject) => {
+//       fetch(url).then(response => {
+//         response.blob().then(blob => {
+//           // Extract the filename from the URL
+//           // const name = url.replaceAll('.').split('/')
+//           const temp = url.split('/');
+//           const name = temp[temp.length - 1];
+//           // const file =  new File([blob], name[(name.length) - 1] + imageType[blob.type], {
+//           //   type: blob.type || defaultType,
+//           // });
+//           const file =  new File([blob], name.includes(".") ? name : name + imageType[blob.type], {
+//             type: blob.type || defaultType,
+//           });
+//           //  console.log(file)
+//            resolve(file);
+//         });
+//       }).catch(error => {
+//         reject(error);
+//       });
+//     });
+//   }
 function downloadImageOnly(url) {
-  // console.log(url )
+   console.log(url )
     return new Promise((resolve, reject) => {
       fetch(url).then(response => {
         response.blob().then(blob => {
@@ -132,7 +155,7 @@ chrome.runtime.onInstalled.addListener(function () {
   // Add context menu to save images
   chrome.contextMenus.create({
     title: "Save to Digiboxx",
-    contexts: ["image" , "link", "selection"],     
+    contexts: ["image" , "link", "selection" , "all"],     
     id: "saveImage",
   });
 
@@ -140,7 +163,7 @@ chrome.runtime.onInstalled.addListener(function () {
   chrome.contextMenus.create({
     title: "Save directly",
     parentId: "saveImage",
-    contexts: ["image", "link", "selection"],
+    contexts: ["image", "link", "selection" , "all"],
     id: "saveDirectly",
   });
 
@@ -148,7 +171,7 @@ chrome.runtime.onInstalled.addListener(function () {
   chrome.contextMenus.create({
     title: "Save screenshot",
     parentId: "saveImage",
-    contexts: ["image", "link", "selection"],
+    contexts: ["image", "link", "selection" , "all"],
     id: "saveScreenshot",
   });
 });
@@ -162,7 +185,7 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
      
       // Download the image from the URL
       downloadImageOnly(info.srcUrl || info.linkUrl).then(file => {
-      // console.log(file)
+       console.log(file)
         // Extracting infos from the blob
         const fileType = file.type.split("/")[1];
         const size = file.size;
@@ -171,15 +194,15 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
         // Generate a random number for the image name
         const randomNumber = Math.floor(Math.random() * 1000000);
         const newImageName = `${randomNumber}_${imageName}`;
-
+       console.log(newImageName)
         // Get the upload URL from the API
-        getUploadUrl(token, imageName, newImageName, size, fileType).then(uploadRes => {
+        getUploadUrl(token, imageName, newImageName, size, fileType , url).then(uploadRes => {
         // console.log(uploadRes)
           // Upload the image to the API
-          uploadImage(uploadRes.url, file).then(() => {
+          uploadImage(uploadRes.url, file ,url).then(() => {
 // console.log(file)
             // Validate the file
-            validateUploadedFile(file, uploadRes, token, fileType, size, imageName, newImageName).then(() => {
+            validateUploadedFile(file, uploadRes, token, fileType, size, imageName, newImageName ,url).then(() => {
               // chrome.notifications.create({
               //   type: "basic",
               //   title: "Image saved",
@@ -187,11 +210,11 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
               //   iconUrl: "icon.png"
               // });
 
-              getUploadUrlPost(token, uploadRes, newImageName).then((data)=> {
+              getUploadUrlPost(token, uploadRes, newImageName , imageName , url).then((data)=> {
 
 
               
-                uploadImage(data.url, file).then((data2) => {
+                uploadImage(data.url, file ,url).then((data2) => {
                   // chrome.notifications.create({
                   //   type: "basic",
                   //   title: "Image saved",
@@ -199,7 +222,8 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
                   //   iconUrl: "icon.png"
                   // });
                 
-                  UpdateThumbnail(token , newImageName  , uploadRes).then((data)=>{
+                  UpdateThumbnail(token , newImageName  ,imageName, uploadRes ,url).then((data)=>{
+                    // console.log(newImageName)
                    
                     chrome.notifications.create({
                       type: "basic",
@@ -283,6 +307,7 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
         const file = new File([blob], "screenshot.jpeg");
         const fileType = "jpeg";
         const size = file.size;
+        // const imageName = "screenshot.jpeg";
         const imageName = "screenshot.jpeg";
         // Generate a random number for the image name
         const randomNumber = Math.floor(Math.random() * 1000000);
@@ -355,9 +380,11 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
     const extension = [fileType, "ChromeExt"]
     fileUploadData.append("tag_details1", JSON.stringify(extension));
     fileUploadData.append("user_details", "{}");
-    fileUploadData.append("file_title1", imageName);
+    // fileUploadData.append("file_title1", imageName);
+    fileUploadData.append("file_title1", fileTitle);
     fileUploadData.append("file_id", uploadedData.file_id.toString());
-    fileUploadData.append("file_description", file.name);
+    // fileUploadData.append("file_description", file.name);
+    fileUploadData.append("file_description", url);
     fileUploadData.append("file_size1", size.toString());
     fileUploadData.append("file_digiPath", "");
     // fileUploadData.append("folder_session", "270970");  
@@ -389,13 +416,14 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
     });
   }
   // func to call minio after file upload
-  function getUploadUrlPost(token, uploadedData, newImageName){
+  function getUploadUrlPost(token, uploadedData,imageName, newImageName){
     
  
     return new Promise((resolve, reject) => {
-  
+
       const minioData = new FormData();
-      minioData.append("file_title", newImageName);
+      // minioData.append("file_title", newImageName);
+      minioData.append("file_title", fileTitle);
       minioData.append("file_type", "thumbnail");
       minioData.append("file_id",uploadedData.file_id.toString() );
   
@@ -427,7 +455,8 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
     return new Promise((resolve, reject) => {
     const UpdateThumbnailData = new FormData();
     UpdateThumbnailData.append("file_id", uploadedData.file_id.toString());
-    UpdateThumbnailData.append("file_name", imageName);
+    // UpdateThumbnailData.append("file_name", imageName);
+    UpdateThumbnailData.append("file_name", fileTitle);
     
   
     return fetch("https://apitest.digiboxx.com/dgb_asset_file_mgmt_func/dgb_update_thumbnail_fn/", {
@@ -443,7 +472,8 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
       if (!response.ok) {
         throw new Error(response.statusText);
       }
-      return response.json();
+      // return response.json();
+      console.log(response)
     }).then(data => {
       resolve(data);
     }).catch(error => {
