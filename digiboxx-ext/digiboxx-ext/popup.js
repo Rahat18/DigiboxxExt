@@ -39,7 +39,7 @@ document.getElementById('logout').addEventListener('click' , function(){
      chrome.storage.local.remove("email");
      DisplayUsername();
        window.close();
-      console.log(data)
+      // console.log(data)
 
     })
     .catch(function (error) {
@@ -48,6 +48,49 @@ document.getElementById('logout').addEventListener('click' , function(){
 
 } )
  
+function base64UrlEncode(str) {
+  let base64 = btoa(str);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function signJWT(payload, secretKey) {
+  const encodedHeader = base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+
+  const dataToSign = `${encodedHeader}.${encodedPayload}`;
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(dataToSign);
+
+  const importedKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secretKey),
+    { name: 'HMAC', hash: { name: 'SHA-256' } },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', importedKey, data);
+  const encodedSignature = base64UrlEncode(String.fromCharCode(...new Uint8Array(signature)));
+
+  const jwtToken = `${dataToSign}.${encodedSignature}`;
+  return jwtToken;
+}
+
+function base64UrlDecode(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) {
+    str += '=';
+  }
+  return atob(str);
+}
+
+function decodeJWT(jwtToken) {
+  const parts = jwtToken.split('.');
+  const header = JSON.parse(base64UrlDecode(parts[0]));
+  const payload = JSON.parse(base64UrlDecode(parts[1]));
+  return { header, payload };
+}
 
 // Login func
 function login(email, password, otp) {
@@ -63,18 +106,26 @@ function login(email, password, otp) {
         payload.otp_data = otp;
       }
 
-      console.log(payload);
-       localStorage.setItem('email' , payload.logUsername)
+      // console.log(payload);
+       localStorage.setItem('email' , payload.logUsername);
+
+      const key = 'dgb_user_login_post_fn_';
+
+      const encrypt_payload = await signJWT(payload, key);
 
       const response = await fetch('https://apitest.digiboxx.com/dgb_login_func/dgb_user_login_post_fn/', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          "x-request-referrer": "https://apptest.digiboxx.com/"
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({data: encrypt_payload})
       });
+      
+      const responseJson = await response.json();
+      const decoded = decodeJWT(responseJson.data);
 
-      resolve(response);
+      resolve(decoded.payload);
     } catch (error) {
       reject(error);
     }
@@ -109,18 +160,19 @@ document.addEventListener('DOMContentLoaded', function () {
     var loggedInDiv = document.getElementById('loggedIn');
     var otp = document.getElementById('otp')?.value;
 
-    // console.log(otp);
+    // // console.log(otp);
 
     // Make API request to login and store token
     try {
       const response = await login(email, password, otp);
-     console.log(response)
-      if (!response.ok) {
-        throw new Error('Invalid email or password');
-      }
-      const data = await response.json();
+     // console.log(response)
+      // if (!response.ok) {
+      //   throw new Error('Invalid email or password');
+      // }
+      const data = response;
+      console.log(data);
       
-console.log(data)
+// console.log(data)
       // if TFA is not activated, then the users signs in normally
       // given credentials are correct
       if (data.message === "Valid user") {
@@ -130,7 +182,7 @@ console.log(data)
         { 
           // loggedInDiv.innerText += " " + data.email;
           landingPage( data.token).then(data =>{
-            console.log(data)
+            // console.log(data)
             var foldername = data.folder_data.filter(val =>{
               return val.folder_name == "Chrome Scrapbook"
             }) // If the folder already exists we same files on the existing folder
@@ -140,14 +192,14 @@ console.log(data)
             }  
              // Creating a folder for user
             else{
-              console.log(data)
+              // console.log(data)
               token =localStorage.getItem("token")
                createFolder(token)
             }
           })
           
         });
-        console.log(data);
+        // // console.log(data)
 
       }
       // if user has TFA activated, then otp will be sent to user
@@ -174,12 +226,8 @@ console.log(data)
             }
           })
         });
-      }  else if ((data.message === "Invalid Password" && data.status_code== 403) || data.status_code == 402) {
-        wrongPassword.style.display = 'block';
-        wrongPassword.innerText = data.message_format;
-      }
-      else {
-        console.log(data);
+      } else {
+        // console.log(data);
       }
     } catch(error) {
       errorMessage.textContent = error.message;
@@ -189,10 +237,10 @@ console.log(data)
 
 // func which creates a folder named Chrome Scrapbook if it's not present 
 function createFolder(token) {
-  console.log(token)
+  // console.log(token)
   return new Promise((resolve, reject) => {
     // token = localStorage.getItem('token')
-// console.log(token)
+// // console.log(token)
     const folderData = new FormData();
     folderData.append("folder_id", "0");
     folderData.append("folderName","Chrome Scrapbook");
@@ -216,7 +264,7 @@ function createFolder(token) {
       return response.json();
 
     }).then(data => {
-      console.log(data)
+      // console.log(data)
       localStorage.setItem("folder_created" , data.folder_created)
       chrome.storage.local.set({folder_created : data.folder_created} , function(){}) 
       resolve(data);
@@ -250,14 +298,14 @@ function createFolder(token) {
          })
     })
     .then(response => {
-      // console.log(response.body)
+      // // console.log(response.body)
       if (!response.ok) {
         throw new Error(response.statusText);
       }
       return response.json();
     }).then(function (data) {
           
-              console.log(data)
+              // console.log(data)
               resolve(data);
               
             })
