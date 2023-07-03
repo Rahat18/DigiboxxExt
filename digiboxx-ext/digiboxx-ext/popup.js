@@ -171,7 +171,12 @@ document.addEventListener('DOMContentLoaded', function () {
       // }
       const data = response;
       console.log(data);
-      
+      if(data.message==='Invalid Password'){
+        document.getElementById('wrongPassword').style.display = "block"
+        document.getElementById('wrongPassword').innerText =  data.message_format;  
+    } else{
+      document.getElementById('wrongPassword').style.display = "none"
+    }
 // console.log(data)
       // if TFA is not activated, then the users signs in normally
       // given credentials are correct
