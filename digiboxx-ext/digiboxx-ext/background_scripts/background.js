@@ -56,7 +56,7 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
         }
         return response.json();
       }).then(data => {
-        // console.log(data)
+         console.log(data)
         resolve(data);
       }).catch(error => {
         reject(error);
@@ -66,7 +66,7 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
 
   // func for put method post minio to upload file to api
   function uploadImage(uploadUrl, file) {
-    // console.log(file)
+     console.log(file)
     return new Promise((resolve, reject) => {
       fetch(uploadUrl, {method: 'PUT', body: file})
         .then(response => {
@@ -98,13 +98,20 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
      'text/plain' : '.txt' ,
      'application/rtf' : '.rtf',
      'text/html': '.html' ,
-     'video/mp4': '.mp4'
+     'video/mp4': '.mp4',
+     'video/mpeg': '.mpeg',
+     'video/mpg': '.mpeg',
+     'video/x-msvideo': '.avi',
+     'video/quicktime': '.quicktime',
+     'video/webm': '.webm',
+     'video/ogg': '.ogg'
+
   }
   defaultType = 'image/jpeg'
 
 // Function to save an image from a URL and return a File object
 function downloadImageOnly(url) {
-  // console.log(url )
+   console.log(url )
     return new Promise((resolve, reject) => {
       fetch(url).then(response => {
         response.blob().then(blob => {
@@ -132,31 +139,16 @@ chrome.runtime.onInstalled.addListener(function () {
   // Add context menu to save images
   chrome.contextMenus.create({
     title: "Save to Digiboxx",
-    contexts: ["image" , "link", "selection"],     
+    contexts: ["image" , "link" , "video" , "selection"],     
     id: "saveImage",
-  });
-
-  // Create sub-context menu: Save directly
-  chrome.contextMenus.create({
-    title: "Save directly",
-    parentId: "saveImage",
-    contexts: ["image", "link", "selection"],
-    id: "saveDirectly",
-  });
-
-  // Create sub-context menu: Save screenshot
-  chrome.contextMenus.create({
-    title: "Save screenshot",
-    parentId: "saveImage",
-    contexts: ["image", "link", "selection"],
-    id: "saveScreenshot",
   });
 });
 
 // Add a listener to handle the context menu item click
 
 chrome.contextMenus.onClicked.addListener(function (info, tab) {
-  if (info.menuItemId === "saveDirectly") {
+  // console.log(info)
+  if (info.menuItemId === "saveImage") {
     // Get the token from local storage
     getToken().then(token => {
      
@@ -267,81 +259,6 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
           networkFails()
          }
         
-      });
-    });
-  } else if (info.menuItemId === "saveScreenshot") {
-      chrome.tabs.captureVisibleTab(function (screenshotUrl) {
-        console.log("Screenshot URL:", screenshotUrl);
-        const base64string = screenshotUrl.split(';base64,')[1];
-        const byteCharacters = atob(base64string);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], {type: 'image/jpeg'});
-        const file = new File([blob], "screenshot.jpeg");
-        const fileType = "jpeg";
-        const size = file.size;
-        const imageName = "screenshot.jpeg";
-        // Generate a random number for the image name
-        const randomNumber = Math.floor(Math.random() * 1000000);
-        const newImageName = `${randomNumber}_${imageName}`;
-
-        // Get the token from local storage
-        getToken().then(token => {
-          getUploadUrl(token, imageName, newImageName, size, fileType).then(uploadRes => {
-            // Upload the image to the API
-            uploadImage(uploadRes.url, file).then(() => {
-              // Validate the file
-              validateUploadedFile(file, uploadRes, token, fileType, size, imageName, newImageName).then(() => {
-                getUploadUrlPost(token, uploadRes, newImageName).then((data)=> {
-                  uploadImage(data.url, file).then((data2) => {
-                    UpdateThumbnail(token , newImageName  , uploadRes).then((data)=>{
-                      chrome.notifications.create({
-                        type: "basic",
-                        title: "File saved",
-                        message: "Saved successfully!",
-                        iconUrl: "icon.png"
-                      });
-                    }).catch(err => {
-                      chrome.notifications.create({
-                        type: "basic",
-                        title: "Error updating thumbnail",
-                        message: `An error occurred while updating thumbnail: ${err}`,
-                        iconUrl: "icon.png"
-                      });
-                    })
-                  }).catch(err => {
-                    chrome.notifications.create({
-                      type: "basic",
-                      title: "Error saving file",
-                      message: `An error occurred while uploading thumbnail.`,
-                      iconUrl: "icon.png"
-                    });
-                  })
-                }).catch(err => {
-                  chrome.notifications.create({
-                    type: "basic",
-                    title: "Error saving file",
-                    message: `An error occurred while uploading thumbnail.`,
-                    iconUrl: "icon.png"
-                  });
-                })
-              });
-        }).catch(error => {
-            if(error.status_code) {
-              chrome.notifications.create({
-                type: "basic",
-                title: "Error fetching file",
-                message: `An error occurred while fetching the file.`,
-                iconUrl: "icon.png"
-              });
-            } else {
-              networkFails()
-            }
-          });
-        });
       });
     });
   }
@@ -477,7 +394,7 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
             chrome.storage.local.remove("email");
           }
         }).catch(error =>{
-         console.log(error.message);
+        //  console.log(error.message);
         })
       })
   
