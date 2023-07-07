@@ -6,7 +6,8 @@ function DisplayUsername(){
     if (result.token) {
       document.getElementById('form').style.display = "none"
       document.getElementById('details').style.display = "block"
-      document.getElementById('loggedIn').innerText =  "You are logged in as" + " " +localStorage.getItem('email')  
+      document.getElementById('loggedIn').innerText =  "You are logged in as" + " " +localStorage.getItem('email') 
+      document.getElementById('login-button').style.display ="none" 
     } else {
       document.getElementById('form').style.display = "block"
       document.getElementById('details').style.display = "none"
@@ -92,6 +93,15 @@ function decodeJWT(jwtToken) {
   return { header, payload };
 }
 
+function displayUpgradeModal() {
+  upgradeModal.style.display = "block";
+}
+
+upgradeButton.addEventListener("click", () => {
+  console.log("click")
+  window.open("https://test.digiboxx.com/workspace", "_blank");
+  // upgradeModal.style.display = "none";
+});
 // Login func
 function login(email, password, otp) {
   return new Promise(async (resolve, reject) => {
@@ -117,7 +127,8 @@ function login(email, password, otp) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          "x-request-referrer": "https://apptest.digiboxx.com/"
+           "x-request-referrer": "https://apptest.digiboxx.com/"
+          // "x-request-referrer": "https://chromeext.digiboxx.com"
         },
         body: JSON.stringify({data: encrypt_payload})
       });
@@ -150,6 +161,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var loginForm = document.getElementById('login-form');
   var errorMessage = document.getElementById('error-message');
+  const upgradeModal = document.getElementById("upgradeModal");
+    const upgradeButton = document.getElementById("upgradeButton");
   // var otp = document.getElementById('otpContainer');
 
   loginForm.addEventListener('submit', async function (event) {
@@ -177,6 +190,15 @@ document.addEventListener('DOMContentLoaded', function () {
     } else{
       document.getElementById('wrongPassword').style.display = "none"
     }
+    if(data.status_code ===1051){
+      console.log(data.message)
+      // document.getElementById('upgradePlan').style.display = "block"
+      // document.getElementById('upgradePlan').innerText =  "Upgrade to a paid plan for premium service perks."; 
+      // displayUpgradePopup();
+      // alert("Upgrade to a paid plan for premium service perks.");
+      displayUpgradeModal();
+    } 
+    document.getElementById('login-button').style.display = "none"
 // console.log(data)
       // if TFA is not activated, then the users signs in normally
       // given credentials are correct

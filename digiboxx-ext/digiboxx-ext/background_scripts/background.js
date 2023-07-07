@@ -1,3 +1,22 @@
+// https://stackoverflow.com/questions/30999159/in-chrome-extension-change-referrer-for-ajax-requests-sent-to-certain-domain
+const randomId = Math.floor(Math.random() * 1000000);
+chrome.declarativeNetRequest.updateDynamicRules({
+  addRules: [{
+      "id": randomId,
+      "priority": 1,
+      "action": {
+          "type": "modifyHeaders",
+          "requestHeaders": [
+              { "header": "Referer", "operation": "set", "value": "https://chromeext.digiboxx.com" }
+          ]
+      },
+      "condition": {
+          "urlFilter": "https://apitest.digiboxx.com",
+          "resourceTypes": ["xmlhttprequest"] // see available https://developer.chrome.com/docs/extensions/reference/declarativeNetRequest/#type-ResourceType
+      }
+  }],
+});
+
 const storage = chrome.storage;
 // Get the token from local storage
 function getToken() {
