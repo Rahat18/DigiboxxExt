@@ -7,7 +7,8 @@ chrome.declarativeNetRequest.updateDynamicRules({
       "action": {
           "type": "modifyHeaders",
           "requestHeaders": [
-              { "header": "Referer", "operation": "set", "value": "https://chromeext.digiboxx.com" }
+               { "header": "Referer", "operation": "set", "value": "https://chromeext.digiboxx.com" },
+              // { "header": "Referer", "operation": "set", "value": "https://desktop.digiboxx.com" }
           ]
       },
       "condition": {
@@ -195,7 +196,7 @@ chrome.runtime.onInstalled.addListener(function () {
 
   // Create sub-context menu: Save directly
   chrome.contextMenus.create({
-    title: "Save directly",
+    title: "➤ Save directly",
     parentId: "saveImage",
     contexts: ["image", "link", "selection" , "all" ,"video", "audio"],
     id: "saveDirectly",
@@ -203,7 +204,7 @@ chrome.runtime.onInstalled.addListener(function () {
 
   // Create sub-context menu: Save screenshot
   chrome.contextMenus.create({
-    title: "Save screenshot",
+    title: "➤ Save screenshot",
     parentId: "saveImage",
     contexts: ["image", "link", "selection" , "all"],
     id: "saveScreenshot",
@@ -220,6 +221,7 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
       // Download the image from the URL
       downloadImageOnly(info.srcUrl || info.linkUrl).then(file => {
        console.log(file)
+       console.log(info)
         // Extracting infos from the blob
         const fileType = file.type.split("/")[1];
         console.log(fileType)
@@ -263,7 +265,8 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
                     chrome.notifications.create({
                       type: "basic",
                       title: "File saved",
-                      message: "Saved successfully!",
+                      // message: "Saved successfully!",
+                      message: "MyBoxx > Chrome Scrapbook",
                       iconUrl: "icon.png"
                     });
                   }).catch(err => {
@@ -310,6 +313,7 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
             });
           }else {
            networkFails()
+          //  console.log("1")
           }
           
         });
@@ -323,7 +327,14 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
           });
         }
         else {
-          networkFails()
+          // networkFails()
+          // console.log("2")
+          chrome.notifications.create({
+            type: "basic",
+            title: "Error",
+            message: `Sorry , we could not save your file.Try saving another one.`,
+            iconUrl: "icon.png"
+          });
          }
         
       });
@@ -368,7 +379,8 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
                       chrome.notifications.create({
                         type: "basic",
                         title: "File saved",
-                        message: "Saved successfully!",
+                        // message: "Saved successfully!",
+                        message: "MyBoxx > Chrome Scrapbook",
                         iconUrl: "icon.png"
                       });
                     }).catch(err => {
@@ -406,6 +418,7 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
               });
             } else {
               networkFails()
+              // console.log("3")
             }
           });
         });
@@ -556,8 +569,10 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
    function networkFails(){
     chrome.notifications.create({
       type: "basic",
-      title: "DigiBoxx unreachable",
-      message: "We could not reach DigiBoxx. The network could be down or busy. Please try again in a minute.",
+      // title: "DigiBoxx unreachable",
+      title: "You are offline.",
+      // message: "We could not reach DigiBoxx. The network could be down or busy. Please try again in a minute.",
+      message: "We could not reach DigiBoxx.Please check your connection.",
       iconUrl: "icon.png"
     });
 

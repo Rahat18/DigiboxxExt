@@ -8,6 +8,8 @@ function DisplayUsername(){
       document.getElementById('details').style.display = "block"
       document.getElementById('loggedIn').innerText =  "You are logged in as" + " " +localStorage.getItem('email') 
       document.getElementById('login-button').style.display ="none" 
+       document.getElementById('otp').style.display ="none" 
+     
     } else {
       document.getElementById('form').style.display = "block"
       document.getElementById('details').style.display = "none"
@@ -185,11 +187,18 @@ document.addEventListener('DOMContentLoaded', function () {
       const data = response;
       console.log(data);
       if(data.message==='Invalid Password'){
-        document.getElementById('wrongPassword').style.display = "block"
+        // document.getElementById('wrongPassword').style.display = "block"
+        document.getElementById('wrongPassword').style.display = "flex"
         document.getElementById('wrongPassword').innerText =  data.message_format;  
     } else{
       document.getElementById('wrongPassword').style.display = "none"
     }
+    if( data.message == "Invalid credentials"){
+      document.getElementById('invalidCredentials').style.display = "flex"
+      document.getElementById('invalidCredentials').innerText =  `Invalid email or password`;  
+  } else{
+    document.getElementById('invalidCredentials').style.display = "none"
+  }
     if(data.status_code ===1051){
       console.log(data.message)
       // document.getElementById('upgradePlan').style.display = "block"
@@ -198,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // alert("Upgrade to a paid plan for premium service perks.");
       displayUpgradeModal();
     } 
-    document.getElementById('login-button').style.display = "none"
+    // document.getElementById('login-button').style.display = "none"
 // console.log(data)
       // if TFA is not activated, then the users signs in normally
       // given credentials are correct
@@ -253,7 +262,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           })
         });
-      } else {
+      } 
+      else {
         // console.log(data);
       }
     } catch(error) {
