@@ -1,3 +1,5 @@
+ var WebsiteUrl = 'https://apitest.digiboxx.com/'
+
 // https://stackoverflow.com/questions/30999159/in-chrome-extension-change-referrer-for-ajax-requests-sent-to-certain-domain
 const randomId = Math.floor(Math.random() * 1000000);
 chrome.declarativeNetRequest.updateDynamicRules({
@@ -32,6 +34,26 @@ function getToken() {
     });
   });
 }
+var topIcon = storage.local.get("token")? "icon.png" : "disabled_icon.png";
+async function updateExtensionIcon() {
+  try {
+    const token = await getToken();
+    const tokenExists = token !== null && token !== undefined;
+    
+    if (tokenExists) {
+      chrome.action.setIcon({ path: "icon.png" });
+    } else {
+      chrome.action.setIcon({ path: "../disabled_icon.png" });
+    }
+  } catch (error) {
+    console.error("Error retrieving token:", error);
+    // Handle the error here if needed.
+  }
+}
+updateExtensionIcon();
+
+// Listen for changes in the local storage and update the extension icon accordingly
+chrome.storage.onChanged.addListener(updateExtensionIcon);
 //function to get folder session
 function getFolderSession() {
   return new Promise((resolve, reject) => {
@@ -44,43 +66,104 @@ function getFolderSession() {
     });
   });
 }
+
+// DGBX-12711 || Md Yasin Ansari || Payload Encoding, Response Decoding Function created (Start)
+const urlSafeEncode = (data) => btoa(data).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const generateHeader = () => urlSafeEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+const processPayload = (payload) => urlSafeEncode(JSON.stringify(payload));
+const createToBeSignedData = (header, payload) => `${header}.${payload}`;
+const encodeData = (toBeSigned) => new TextEncoder().encode(toBeSigned);
+const importSecretKey = async (secretKey) => {
+  const textEncoder = new TextEncoder();
+  return await crypto.subtle.importKey('raw', textEncoder.encode(secretKey), { name: 'HMAC', hash: { name: 'SHA-256' } }, false, ['sign']);
+};
+const signData = async (key, data) => {
+  const signature = await crypto.subtle.sign('HMAC', key, data);
+  return urlSafeEncode(String.fromCharCode(...new Uint8Array(signature)));
+};
+async function folderSignJWT(payload, secretKey) {
+  const header = generateHeader();
+  const processedPayload = processPayload(payload);
+  const toBeSigned = createToBeSignedData(header, processedPayload);
+  const encodedToBeSigned = encodeData(toBeSigned);
+  const importedKey = await importSecretKey(secretKey);
+  const urlSafeSignature = await signData(importedKey, encodedToBeSigned);
+  return `${toBeSigned}.${urlSafeSignature}`;
+}
+
+const urlSafeDecode = (data) => {
+  data = data.replace(/-/g, '+').replace(/_/g, '/');
+
+  while (data.length % 4) {
+    data += '=';
+  }
+
+  return JSON.parse(atob(data));
+}
+
+const splitToken = (token) => {
+  const parts = token.split('.');
+
+  if (parts.length !== 3) {
+    throw new Error('Token structure incorrect');
+  }
+
+  return parts;
+}
+
+function folderDecodeJWT(token) {
+  // console.log(folderDecodeJWT);
+  const [header, payload, signature] = splitToken(token);
+  const decodedHeader = urlSafeDecode(header);
+  const decodedPayload = urlSafeDecode(payload);
+  return { decodedHeader, decodedPayload };
+}
+// DGBX-12711 || Md Yasin Ansari || Payload Encoding, Response Decoding Function created (End)
+
 //func  to get the upload URL
 async function getUploadUrl(token, imageName, newImageName, imageSize, imageExtension) {
   const folder_session = await getFolderSession()
-    return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
   
-      const minioData = new FormData();
-      minioData.append("file_title", newImageName);
-      minioData.append("file_type", imageExtension);
-      minioData.append("file_size", imageSize);
-      // minioData.append("folder_session","270970");
-      minioData.append("folder_session",folder_session);
-      minioData.append("folder_is_resource", "0");
-      minioData.append("file_name", imageName);
-      minioData.append("digiPath", "");
-      minioData.append("parent_folder", folder_session);
-      minioData.append("replace_file", "0");
+    // DGBX-12711 || Md Yasin Ansari || Updated Payload from formData to Object
+    const payload = {
+      "file_title": newImageName,
+      "file_type": imageExtension,
+      "file_size": imageSize,
+      "folder_session": folder_session,
+      "folder_is_resource": "0",
+      "file_name": imageName,
+      "digiPath": "",
+      "parent_folder": folder_session,
+      "replace_file": "0"
+    };
+    const key = 'dgb_get_minio_url_fn_' + token;
+    const encryptedPayload = await folderSignJWT(payload, key);
   
-      // Send a POST request to the API to get the upload URL
-      fetch("https://apitest.digiboxx.com/dgb_asset_file_mgmt_func/dgb_get_minio_url_fn/", {
-        method: "POST",
-        headers: {
-          "accept": "application/json",
+    try {
+      // DGBX-12711 || Md Yasin Ansari || Updated Header for Extension
+      const response = await fetch("https://apitest.digiboxx.com/dgb_asset_file_mgmt_func/dgb_get_minio_url_fn/", {
+        'method': "POST",
+        'headers': {
           "Authorization": `Bearer ${token}`,
-          "x-request-referrer": "https://apitest.digiboxx.com/"
+          "referrer": "https://chromeext.digiboxx.com",
+          'Content-Type': 'application/json'
         },
-        body: minioData
-      }).then(response => {
+        body: JSON.stringify({ data: encryptedPayload })
+      });
+
         if (!response.ok) {
           throw new Error(response.statusText);
         }
-        return response.json();
-      }).then(data => {
-         console.log(data)
-        resolve(data);
-      }).catch(error => {
+
+      const responseBody = await response.json();
+      const decoded = folderDecodeJWT(responseBody.data); // DGBX-12711 || Md Yasin Ansari || Decode the JWT
+      console.log(decoded);
+      resolve(decoded.decodedPayload);
+
+    } catch (error) {
         reject(error);
-      });
+    }
     });
   }
 
@@ -88,13 +171,23 @@ async function getUploadUrl(token, imageName, newImageName, imageSize, imageExte
   function uploadImage(uploadUrl, file) {
     // console.log(file)
     return new Promise((resolve, reject) => {
-      fetch(uploadUrl, {method: 'PUT', body: file})
+      // DGBX-12711 || Md Yasin Ansari || Updated Options rather then passing directly to fetch
+        const options = {
+            method: 'PUT',
+            body: file,
+            headers: {
+                'Content-Type': file.type
+            }
+        };
+
+        fetch(uploadUrl, options)
         .then(response => {
           if (response.ok) {
-            // console.log(response)
             resolve(response.text());
+                    // console.log("uploadImage FUnction Response: " + response)
           } else {
             reject(response.statusText);
+                    // console.warn("uploadImage FUnction Response(reject): " + response)
           }
         })
         .catch(error => reject(error));
@@ -210,6 +303,37 @@ chrome.runtime.onInstalled.addListener(function () {
     id: "saveScreenshot",
   });
 });
+// Function to enable or disable the context menu based on the token availability
+async function updateContextMenu() {
+  try {
+    const token = await getToken();
+    const tokenExists = token !== null && token !== undefined;
+    
+    if (tokenExists) {
+      // Token found, enable the context menu.
+      chrome.contextMenus.update("saveImage", {
+        enabled: true,
+        title: "Save to Digiboxx",
+      });
+    } else {
+      // Token not found, disable the context menu and show the message.
+      chrome.contextMenus.update("saveImage", {
+        enabled: false,
+        title: "Save to Digiboxx     Must sign in!",
+      });
+    }
+  } catch (error) {
+    console.log("Error retrieving token:", error);
+    // Handle the error here if needed.
+  }
+}
+
+// Call the updateContextMenu function initially to set the state of the context menu
+updateContextMenu();
+
+// Listen for changes in the local storage and update the context menu accordingly
+chrome.storage.onChanged.addListener(updateContextMenu);
+
 
 // Add a listener to handle the context menu item click
 
@@ -429,108 +553,132 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
 
 //func to upload file
   async function validateUploadedFile(file, uploadedData, token, fileType, size, imageName, newImageName) {
-    const folder_session = await getFolderSession()
+  const folder_session = await getFolderSession();
+ // DGBX-12711 || Md Yasin Ansari || Converted the form data to a simple object
+  const payload = {
+    "tag_details1": JSON.stringify([fileType, "ChromeExt"]),
+    "user_details": "{}",
+    "file_title1": imageName,
+    "file_id": uploadedData.file_id.toString(),
+    "file_description": file.name,
+    "file_size1": size.toString(),
+    "file_digiPath": "",
+    "folder_session": folder_session,
+    "lastModified": file.lastModified.toString(),
+    "folder_is_resource": "0",
+    "folder_is_downloadale": "1",
+    "resource_array": "[]",
+    "downloadable_array": "[]",
+    "new_folder_name": "",
+    "folder_color": "",
+    "replace_file": "0",
+    "chooseFile1": newImageName
+  };
   
-    const fileUploadData = new FormData();
-    const extension = [fileType, "ChromeExt"]
-    fileUploadData.append("tag_details1", JSON.stringify(extension));
-    fileUploadData.append("user_details", "{}");
-    fileUploadData.append("file_title1", imageName);
-    fileUploadData.append("file_id", uploadedData.file_id.toString());
-    fileUploadData.append("file_description", file.name);
-    fileUploadData.append("file_size1", size.toString());
-    fileUploadData.append("file_digiPath", "");
-    // fileUploadData.append("folder_session", "270970");  
-    fileUploadData.append("folder_session", folder_session);  
-    fileUploadData.append("lastModified", file.lastModified.toString());
-    fileUploadData.append("folder_is_resource", "0");
-    fileUploadData.append("folder_is_downloadale", "1");
-    fileUploadData.append("resource_array", "[]");
-    fileUploadData.append("downloadable_array", "[]");
-    fileUploadData.append("new_folder_name", "");
-    fileUploadData.append("folder_color", "");
-    fileUploadData.append("replace_file", "0");
-    fileUploadData.append("chooseFile1", newImageName);
+  const key = 'dgb_user_file_upload_fn_' + token;
+  const encryptedPayload = await folderSignJWT(payload, key); // DGBX-12711 || Md Yasin Ansari || Encrypted Payload
   
-    return fetch("https://apitest.digiboxx.com/dgb_asset_file_mgmt_func/dgb_user_file_upload_fn/", {
-      method: "POST",
-      headers: {
-        "accept": "application/json",
+  try {
+    // DGBX-12711 || Md Yasin Ansari || Updated Options
+    const response = await fetch("https://apitest.digiboxx.com/dgb_asset_file_mgmt_func/dgb_user_file_upload_fn/", {
+      'method': "POST",
+      'headers': {
         "Authorization": `Bearer ${token}`,
-        "x-request-referrer": "https://apitest.digiboxx.com/"
+        "referrer": "https://chromeext.digiboxx.com",
       },
-      body: fileUploadData
-    })
-    .then(response => {
+      body: JSON.stringify({ data: encryptedPayload })
+    });
+
       if (!response.ok) {
         throw new Error(response.statusText);
       }
-      return response.json();
-    });
+
+    const responseBody = await response.json();  // Get response body as JSON
+    const decoded = folderDecodeJWT(responseBody.data); // DGBX-12711 || Md Yasin Ansari || Decrypt the JWT response
+    console.log(decoded);
+    return decoded.decodedPayload; // DGBX-12711 || Md Yasin Ansari || Return the decrypted payload
+
+  } catch (error) {
+    console.error(error);
   }
+}
+
+
   // func to call minio after file upload
-  function getUploadUrlPost(token, uploadedData, newImageName){
-    
- 
-    return new Promise((resolve, reject) => {
+  async function getUploadUrlPost(token, uploadedData, newImageName){
+    // DGBX-12711 || Md Yasin Ansari || Updated Payload from formData to Object
+    const payload = {
+      "file_title": newImageName,
+      "file_type": "thumbnail",
+      "file_id": uploadedData.file_id.toString()
+    };
   
-      const minioData = new FormData();
-      minioData.append("file_title", newImageName);
-      minioData.append("file_type", "thumbnail");
-      minioData.append("file_id",uploadedData.file_id.toString() );
+    const key = 'dgb_get_minio_url_fn_' + token;
+    const encryptedPayload = await folderSignJWT(payload, key);
   
-      // Send a POST request to the API to get the upload URL
-      fetch("https://apitest.digiboxx.com/dgb_asset_file_mgmt_func/dgb_get_minio_url_fn/", {
-        method: "POST",
-        headers: {
-          "accept": "application/json",
+    try {
+      // DGBX-12711 || Md Yasin Ansari || Updated Options
+      const response = await fetch("https://apitest.digiboxx.com/dgb_asset_file_mgmt_func/dgb_get_minio_url_fn/", {
+        'method': "POST",
+        'headers': {
           "Authorization": `Bearer ${token}`,
-          "x-request-referrer": "https://apitest.digiboxx.com/"
+          "referrer": "https://chromeext.digiboxx.com",
+          'Content-Type': 'application/json'
         },
-        body: minioData
-      }).then(response => {
+        body: JSON.stringify({ data: encryptedPayload })
+      });
+  
         if (!response.ok) {
           throw new Error(response.statusText);
         }
-        return response.json();
-      }).then(data => {
-        resolve(data);
-      }).catch(error => {
-        reject(error);
-      });
-    });
+  
+      const responseBody = await response.json();  
+      const decoded = folderDecodeJWT(responseBody.data); // // DGBX-12711 || Md Yasin Ansari || Decrypted the JWT response
+      return decoded.decodedPayload;
+  
+    } catch (error) {
+      console.error(error);
+    }
   }
  
 //func for updating thumbnail once file is saved
-  function UpdateThumbnail(token , imageName  , uploadedData) {
- 
-    return new Promise((resolve, reject) => {
-    const UpdateThumbnailData = new FormData();
-    UpdateThumbnailData.append("file_id", uploadedData.file_id.toString());
-    UpdateThumbnailData.append("file_name", imageName);
+async function UpdateThumbnail(token , imageName  , uploadedData) {
+  // DGBX-12711 || Md Yasin Ansari || Updated Payload from formData to Object
+  const payload = {
+    "file_id": uploadedData.file_id.toString(),
+    "file_name": imageName
+  };
     
+  const key = 'dgb_update_thumbnail_fn_' + token;
+  const encryptedPayload = await folderSignJWT(payload, key);
   
-    return fetch("https://apitest.digiboxx.com/dgb_asset_file_mgmt_func/dgb_update_thumbnail_fn/", {
-      method: "POST",
-      headers: {
-        "accept": "application/json",
+  try {
+    // DGBX-12711 || Md Yasin Ansari || Updated options to send object payload
+    const response = await fetch("https://apitest.digiboxx.com/dgb_asset_file_mgmt_func/dgb_update_thumbnail_fn/", {
+      'method': "POST",
+      'headers': {
         "Authorization": `Bearer ${token}`,
-        "x-request-referrer": "https://apitest.digiboxx.com/"
+        "referrer": "https://chromeext.digiboxx.com",
+        'Content-Type': 'application/json'
       },
-      body: UpdateThumbnailData
-    })
-    .then(response => {
+      body: JSON.stringify({ data: encryptedPayload })
+    });
+
       if (!response.ok) {
         throw new Error(response.statusText);
       }
-      return response.json();
-    }).then(data => {
-      resolve(data);
-    }).catch(error => {
-      reject(error);
-    });;
-  })
+
+    const responseBody = await response.json();
+    const decoded = folderDecodeJWT(responseBody.data); // // DGBX-12711 || Md Yasin Ansari || Decrypt the JWT response
+    console.log("yasinnnnnnnnnnnnnnnnnnnnnn" + JSON.stringify(decoded.decodedPayload))
+    return decoded.decodedPayload;
+
+  } catch (error) {
+    console.error(error);
   }
+}
+
+
 //  funct to logout the user from the extension if any other active session is found
   function ActiveSession(){
    

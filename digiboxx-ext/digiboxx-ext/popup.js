@@ -9,6 +9,7 @@ function DisplayUsername(){
       document.getElementById('loggedIn').innerText =  "You are logged in as" + " " +localStorage.getItem('email') 
       document.getElementById('login-button').style.display ="none" 
        document.getElementById('otp').style.display ="none" 
+       document.getElementById('digispace').style.display ="none" 
      
     } else {
       document.getElementById('form').style.display = "block"
@@ -16,11 +17,11 @@ function DisplayUsername(){
     }
   });
 }
-
+var WebsiteUrl = 'https://apitest.digiboxx.com/' 
 
 // //Logout func
 document.getElementById('logout').addEventListener('click' , function(){
-  fetch('https://apitest.digiboxx.com/dgb_user_func/dgb_user_logout_fn/', {
+  fetch(WebsiteUrl + 'dgb_user_func/dgb_user_logout_fn/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -101,11 +102,11 @@ function displayUpgradeModal() {
 
 upgradeButton.addEventListener("click", () => {
   console.log("click")
-  window.open("https://test.digiboxx.com/workspace", "_blank");
+  window.open("https://apptest.digiboxx.com/subscription", "_blank");
   // upgradeModal.style.display = "none";
 });
 // Login func
-function login(email, password, otp) {
+function login(email, password, otp, digispace) {
   return new Promise(async (resolve, reject) => {
     try {
       const payload = {
@@ -117,6 +118,9 @@ function login(email, password, otp) {
       if (otp) {
         payload.otp_data = otp;
       }
+      if (digispace) {
+        payload.workspace = digispace;
+      }
 
       // console.log(payload);
        localStorage.setItem('email' , payload.logUsername);
@@ -125,19 +129,16 @@ function login(email, password, otp) {
 
       const encrypt_payload = await signJWT(payload, key);
 
-      const response = await fetch('https://apitest.digiboxx.com/dgb_login_func/dgb_user_login_post_fn/', {
+      const response = await fetch(WebsiteUrl + 'dgb_login_func/dgb_user_login_post_fn/', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-           "x-request-referrer": "https://apptest.digiboxx.com/"
-          // "x-request-referrer": "https://chromeext.digiboxx.com"
+          "referrer": "https://chromeext.digiboxx.com"
         },
         body: JSON.stringify({data: encrypt_payload})
       });
       
       const responseJson = await response.json();
       const decoded = decodeJWT(responseJson.data);
-
       resolve(decoded.payload);
     } catch (error) {
       reject(error);
@@ -153,6 +154,14 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // chrome.storage.local.remove("token");
+
+  const digispaceContainer = document.getElementById('digispaceContainer');
+  var digispaceField = document.getElementById('digispace')?.value;
+
+
+  // Check if two-factor authentication is enabled
+  digispaceContainer.style.display = 'none';
+  digispaceField.required = false;
 
   const otpContainer = document.getElementById('otpContainer');
   const otpField = document.getElementById("otp");
@@ -174,12 +183,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var password = document.getElementById('password').value;
     var loggedInDiv = document.getElementById('loggedIn');
     var otp = document.getElementById('otp')?.value;
-
+    var digispace = document.getElementById('digispace')?.value;
+    console.log('digispace:', digispace);
+    console.log(email, password)
     // // console.log(otp);
 
     // Make API request to login and store token
     try {
-      const response = await login(email, password, otp);
+      const response = await login(email, password, otp , digispace);
      // console.log(response)
       // if (!response.ok) {
       //   throw new Error('Invalid email or password');
@@ -190,13 +201,18 @@ document.addEventListener('DOMContentLoaded', function () {
         // document.getElementById('wrongPassword').style.display = "block"
         document.getElementById('wrongPassword').style.display = "flex"
         document.getElementById('wrongPassword').innerText =  data.message_format;  
-    } else{
+    } else if(response.status_code === 1024) {
+      digispaceContainer.style.display = 'block';
+      digispaceField.required = true;
+    }
+     else{
       document.getElementById('wrongPassword').style.display = "none"
     }
     if( data.message == "Invalid credentials"){
       document.getElementById('invalidCredentials').style.display = "flex"
       document.getElementById('invalidCredentials').innerText =  `Invalid email or password`;  
-  } else{
+  }
+   else{
     document.getElementById('invalidCredentials').style.display = "none"
   }
     if(data.status_code ===1051){
@@ -208,18 +224,18 @@ document.addEventListener('DOMContentLoaded', function () {
       displayUpgradeModal();
     } 
     // document.getElementById('login-button').style.display = "none"
-// console.log(data)
       // if TFA is not activated, then the users signs in normally
       // given credentials are correct
       if (data.message === "Valid user") {
          localStorage.setItem('token', data.token);
          DisplayUsername()
+         window.close()
         chrome.storage.local.set({'token':data.token},function(update)
         { 
           // loggedInDiv.innerText += " " + data.email;
-          landingPage( data.token).then(data =>{
-            // console.log(data)
-            var foldername = data.folder_data.filter(val =>{
+          landingPage(data.token).then(data =>{
+            console.log(data.decodedPayload.folder_data)
+            var foldername = data.decodedPayload.folder_data.filter(val =>{
               return val.folder_name == "Chrome Scrapbook"
             }) // If the folder already exists we same files on the existing folder
             if(foldername.length){
@@ -263,6 +279,13 @@ document.addEventListener('DOMContentLoaded', function () {
           })
         });
       } 
+      // else  if(data.status_code === 1024 || data.message ==="more than one account with this email, digispace required"){
+      //   console.log("digi")
+      //   digispaceContainer.style.display = 'block';
+      //   digispace.required = true;
+      //    localStorage.setItem('token', data.token);
+  
+      // }
       else {
         // console.log(data);
       }
@@ -273,83 +296,174 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // func which creates a folder named Chrome Scrapbook if it's not present 
-function createFolder(token) {
-  // console.log(token)
-  return new Promise((resolve, reject) => {
-    // token = localStorage.getItem('token')
-// // console.log(token)
-    const folderData = new FormData();
-    folderData.append("folder_id", "0");
-    folderData.append("folderName","Chrome Scrapbook");
-    folderData.append("is_resource","0");
-    folderData.append("checkbox_folder_parent","0");
-    folderData.append("folder_color",null);
+// Function to encrypt payload and add it to form data
+async function encryptPayloadAndSendFormData(payload, secretKey) {
+  // Step 1: Convert the payload to a JSON string
+  const payloadString = JSON.stringify(payload);
 
-   
-    fetch("https://apitest.digiboxx.com/dgb_asset_folder_mgmt_func/dgb_create_folder_post_fn/", {
-      method: "POST",
-      headers: {
-        "accept": "application/json",
-        "Authorization": `Bearer ${token}`,
-        "x-request-referrer": "https://apitest.digiboxx.com/"
-      },
-      body: folderData
-    }).then(response => {
-      if (!response.ok) {
-        throw new Error(response.statusText);
-      }
-      return response.json();
+  // Step 2: Generate the JWT token using the signJWT function
+  const jwtToken = await signJWT(payloadString, secretKey);
 
-    }).then(data => {
-      // console.log(data)
-      localStorage.setItem("folder_created" , data.folder_created)
-      chrome.storage.local.set({folder_created : data.folder_created} , function(){}) 
-      resolve(data);
-    }).catch(error => {
+  // Step 3: Create the form data and add the JWT token as a field
+  const formData = new FormData();
+  formData.append('jwtToken', jwtToken);
+
+  return formData;
+}
+
+// Function to decrypt response data
+async function decryptResponseData(responseData, secretKey) {
+  // The provided function does not include actual decryption logic, so we'll just return the data as it is
+  return responseData;
+}
+
+// DGBX-12711 || Md Yasin Ansari || Paload Encoding, Response Decoding Function created (Start)
+const urlSafeEncode = (data) => btoa(data).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const generateHeader = () => urlSafeEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+const processPayload = (payload) => urlSafeEncode(JSON.stringify(payload));
+const createToBeSignedData = (header, payload) => `${header}.${payload}`;
+const encodeData = (toBeSigned) => new TextEncoder().encode(toBeSigned);
+const importSecretKey = async (secretKey) => {
+  const textEncoder = new TextEncoder();
+  return await crypto.subtle.importKey('raw', textEncoder.encode(secretKey), { name: 'HMAC', hash: { name: 'SHA-256' } }, false, ['sign']);
+};
+const signData = async (key, data) => {
+  const signature = await crypto.subtle.sign('HMAC', key, data);
+  return urlSafeEncode(String.fromCharCode(...new Uint8Array(signature)));
+};
+async function folderSignJWT(payload, secretKey) {
+  const header = generateHeader();
+  const processedPayload = processPayload(payload);
+  const toBeSigned = createToBeSignedData(header, processedPayload);
+  const encodedToBeSigned = encodeData(toBeSigned);
+  const importedKey = await importSecretKey(secretKey);
+  const urlSafeSignature = await signData(importedKey, encodedToBeSigned);
+  return `${toBeSigned}.${urlSafeSignature}`;
+}
+
+const urlSafeDecode = (data) => {
+  data = data.replace(/-/g, '+').replace(/_/g, '/');
+
+  while (data.length % 4) {
+    data += '=';
+  }
+
+  return JSON.parse(atob(data));
+}
+
+const splitToken = (token) => {
+  const parts = token.split('.');
+
+  if (parts.length !== 3) {
+    throw new Error('Token structure incorrect');
+  }
+
+  return parts;
+}
+
+function folderDecodeJWT(token) {
+  console.log(folderDecodeJWT);
+  const [header, payload, signature] = splitToken(token);
+  const decodedHeader = urlSafeDecode(header);
+  const decodedPayload = urlSafeDecode(payload);
+  return { decodedHeader, decodedPayload };
+}
+// DGBX-12711 || Md Yasin Ansari || Paload Encoding, Response Decoding Function created (End)
+
+
+async function createFolder(token) {
+  const key = 'dgb_create_folder_post_fn_' + token;
+  return new Promise(async (resolve, reject) => {
+    try {
+      // DGBX-12711 || Md Yasin Ansari || Corrected Payload and refferer
+      const folderData = {
+        'folder_id': "0",
+        'folderName': "Chrome Scrapbook",
+        'is_resource': "0",
+        'checkbox_folder_parent': "0",
+        'folder_color': null,
+      };
+
+      // Step 1: Encrypt the payload
+      const encryptedFormData = await folderSignJWT(folderData, key);
+      console.log("Encrypted Form Data Line 321:" + encryptedFormData);
+
+      // Step 2: Send the encrypted form data in the Fetch API request
+      fetch(WebsiteUrl +"dgb_asset_folder_mgmt_func/dgb_create_folder_post_fn/" , {
+        'method': "POST",
+        'contentType': 'application/json',
+        'headers': {
+          "Authorization": `Bearer ${token}`,
+          "referrer": "https://chromeext.digiboxx.com"
+        },
+        body: JSON.stringify({data: encryptedFormData})
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(response.statusText);
+          }
+
+          // Step 3: Get the response data
+          const responseData = await response.text();
+          console.log("Encrypted Response Line 340:" + responseData);
+          // Step 4: Decrypt the response data (if needed)
+          const decryptedData = folderDecodeJWT(responseData, key);
+          console.log("Decrypted Response Line 343:" + decryptedData);
+          // If the response data is in JSON format, parse it
+          const parsedData = JSON.parse(decryptedData);
+
+          // Example: Save parsed data to local storage
+          localStorage.setItem("folder_created", JSON.stringify(parsedData.folder_created));
+
+          // Example: Save parsed data to Chrome storage
+          chrome.storage.local.set({ folder_created: parsedData.folder_created }, function () {});
+
+          // Resolve the promise with the parsed data
+          resolve(parsedData);
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    } catch (error) {
       reject(error);
-    });
+    }
   });
 }
 
-// func to get landing page details, which would let us know if folder named "Chrome Scrapbook" already exists
- function landingPage( token) {
- 
-  return new Promise ((resolve , reject) =>{
-    fetch("https://apitest.digiboxx.com/dgb_asset_access_func/dgb_user_landing_page_post_fn/", {
-      method: "POST",
-      headers: {
-        "accept": "application/json",
-        "Authorization": `Bearer ${token}`,
-        "x-request-referrer": "https://apitest.digiboxx.com/"
-      },
-      body: JSON.stringify({
-        page_no: "1",
-        type: "folder",
-        view_type: "created_by", 
-        filter_by_size: "", 
-        filter_by_format: "", 
-        filter_by_name: "", 
-        filter_format_type: "[]", 
-        filter_by_tags: "[]", 
-        filter_by_date: "", 
-         })
-    })
-    .then(response => {
-      // // console.log(response.body)
-      if (!response.ok) {
-        throw new Error(response.statusText);
+async function landingPage(token) {
+  return new Promise(async (resolve, reject) => {  
+    try {
+      // DGBX-12711 || Md Yasin Ansari || Corrected Payload and refferer
+      var payload = {
+        'page_no': 1,
+        'type': "folder",
+        'view_type': "created_by",
+        'filter_by_size': "",
+        'filter_by_format': "",
+        'filter_by_name': "",
+        'filter_format_type': "[]",
+        'filter_by_tags': "[]",
+        'filter_by_date': "",
       }
-      return response.json();
-    }).then(function (data) {
-          
-              // console.log(data)
-              resolve(data);
-              
-            })
-            .catch(function (error) {
-              // errorMessage.textContent = error.message;
-              reject(error);
-            });
-  }) 
- 
+      const key = 'dgb_user_landing_page_post_fn_' + token;
+      const encrypt_payload = await folderSignJWT(payload, key);
+      const response = await fetch(WebsiteUrl + "dgb_asset_access_func/dgb_user_landing_page_post_fn/", {
+        'method': "POST",
+        'contentType': 'application/json',
+        'headers': {
+          "Authorization": `Bearer ${token}`,
+          "referrer": "https://chromeext.digiboxx.com"
+        },
+        body: JSON.stringify({ data: encrypt_payload })
+      });
+      
+      const responseJson = await response.json();
+      console.log("Response: ", responseJson);
+      const decoded = folderDecodeJWT(responseJson.data);
+      resolve(decoded);
+      console.log(decoded)
+    } catch (error) {
+      reject(error);
+    }        
+  })  
 }

@@ -89,12 +89,16 @@
       cursor: pointer;
     }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
   </head>
   <body>
-    <img src="./logo.jpg" style="height: 200px; width: 300px;">
+    <!-- <img src="./Cloudsync.png" style="height: 117px; width: 175.5px;left: 60px;position: relative;"> -->
+    <img src="./DGBX_Logos 2.png" style="height: 16px; width: 73px;left: -181px;position: relative; top: -100px;">
     <div id="form">
-    <h1 style="font-size: 1.8em; color: blue; padding: 6px; display: flex; justify-content: center;">Login to DigiBoxx</h1>
+    <!-- <h1 style="font-size: 1.8em; color: blue; padding: 6px; display: flex; justify-content: center;">Login to DigiBoxx</h1> -->
     <form id="login-form" >
+      
+    <img src="./Cloudsync.png" style="height: 117px; width: 175.5px;left: 60px;position: relative;">
       <label for="email">Email:</label>
       <input type="text" id="email" name="email" required>
       <label for="password">Password:</label>
@@ -109,7 +113,11 @@
         <label for="otp">OTP:</label>
         <input type="text" id="otp" name="otpField"><br><br>
       </div>
-      <input type="submit" value="Login" id="login-button"><br><br>
+      <div id="digispaceContainer">
+        <label for="digispace">Digispace:</label>
+        <input type="text" id="digispace" name="digispaceField"><br><br>
+      </div>
+      <input type="submit" value="Login" id="login-button" style="width: 100%;"><br><br>
     </form>
     <div id="error-message" class="error"></div>
     </div>
@@ -119,9 +127,14 @@
         <button id="upgradeButton" class="modal-button">Upgrade</button>
       </div>
     </div>
-    <div id = "details">
+    <div id = "details" style="position: relative;">
+     <!-- <img src="./LogoutScreen.png" style="height: 117px; width: 175.5px;left: 60px;position: relative;"> -->
+     <!-- <img src="./Online world-cuate 1.png"> -->
+     <img src="./Cloudsync.png" style="    left: 60px;
+     position: relative;
+     padding: 0 0 40px 0;">
       <p id="loggedIn">You are logged in as</p>
-      <input type="button" value="Logout" id="logout" style=" background-color: #007bff;color: #fff; border: none;border-radius: 3px;  cursor: pointer; display: block; margin-top: 10px; padding: 5px 10px;"><br><br>
+      <input type="button" value="Logout" id="logout" style=" background-color: #007bff;color: #fff; border: none;border-radius: 3px;  cursor: pointer; display: block; margin-top: 10px; padding: 5px 10px; width: 100%;"><br><br>
       <!-- <input type="button" value="Open MyBoxx" id="redirect" ><br><br> -->
     </div>
     <script src="popup.js"></script>
